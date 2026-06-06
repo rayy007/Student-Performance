@@ -1,45 +1,69 @@
+# app.py
+
 import streamlit as st
 import pandas as pd
 import joblib
 
-# Load trained model
+st.set_page_config(
+    page_title="Student Placement Prediction",
+    page_icon="🎓",
+    layout="centered"
+)
+
 @st.cache_resource
 def load_model():
     return joblib.load("catboost_model.pkl")
 
 model = load_model()
 
-# Outlier treatment for exam_score
 def cap_exam_score(value):
-    LOWER_BOUND = 20    # Replace with your actual lower bound
-    UPPER_BOUND = 100   # Replace with your actual upper bound
+    LOWER_BOUND = 20
+    UPPER_BOUND = 100
+    return max(LOWER_BOUND, min(value, UPPER_BOUND))
 
-    if value < LOWER_BOUND:
-        return LOWER_BOUND
-    elif value > UPPER_BOUND:
-        return UPPER_BOUND
-    return value
+st.markdown("""
+<style>
+.main-title {
+    text-align: center;
+    color: #4A90E2;
+    font-size: 38px;
+    font-weight: bold;
+}
+.sub-title {
+    text-align: center;
+    font-size: 18px;
+    color: gray;
+}
+.result-box {
+    text-align: center;
+    padding: 25px;
+    border-radius: 15px;
+    font-size: 28px;
+    font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
 
-# Title
-st.title("Student Placement Prediction")
+st.markdown('<div class="main-title">🎓 Student Placement Prediction</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-title">Enter student details using sliders and predict placement status</div>', unsafe_allow_html=True)
 
-st.write("Enter Student Details")
+st.divider()
 
-# Inputs
-study_hours = st.number_input("Study Hours", min_value=0.0)
-attendance = st.number_input("Attendance (%)", min_value=0.0, max_value=100.0)
-sleep_hours = st.number_input("Sleep Hours", min_value=0.0)
-internet_usage = st.number_input("Internet Usage", min_value=0.0)
-assignments_completed = st.number_input("Assignments Completed", min_value=0)
-previous_score = st.number_input("Previous Score", min_value=0.0)
-exam_score = st.number_input("Exam Score", min_value=0.0)
+study_hours = st.slider("📚 Study Hours", 0.0, 12.0, 5.0, 0.5)
+attendance = st.slider("🏫 Attendance (%)", 0.0, 100.0, 75.0, 1.0)
+sleep_hours = st.slider("😴 Sleep Hours", 0.0, 12.0, 7.0, 0.5)
+internet_usage = st.slider("🌐 Internet Usage Hours", 0.0, 12.0, 3.0, 0.5)
+assignments_completed = st.slider("📝 Assignments Completed", 0, 20, 10, 1)
+previous_score = st.slider("📊 Previous Score", 0.0, 100.0, 70.0, 1.0)
+exam_score = st.slider("🧾 Exam Score", 0.0, 100.0, 75.0, 1.0)
 
-# Prediction
-if st.button("Predict"):
+st.divider()
+
+if st.button("🚀 Predict Placement", use_container_width=True):
 
     exam_score = cap_exam_score(exam_score)
 
-    input_df = pd.DataFrame({
+    input_data = pd.DataFrame({
         "study_hours": [study_hours],
         "attendance": [attendance],
         "sleep_hours": [sleep_hours],
@@ -49,9 +73,10 @@ if st.button("Predict"):
         "exam_score": [exam_score]
     })
 
-    prediction = model.predict(input_df)
+    prediction = model.predict(input_data)
 
-    if prediction[0] == 1:
-        st.success("✅ Prediction: Placed")
+    if int(prediction[0]) == 1:
+        st.success("✅ Prediction: Student is Placed")
+        st.balloons()
     else:
-        st.error("❌ Prediction: Not Placed")
+        st.error("❌ Prediction: Student is Not Placed")
