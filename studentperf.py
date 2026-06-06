@@ -1,8 +1,7 @@
-# app.py
-
 import streamlit as st
 import pandas as pd
 import joblib
+import base64
 
 # --------------------------------------------------
 # Page Configuration
@@ -14,6 +13,57 @@ st.set_page_config(
 )
 
 # --------------------------------------------------
+# Background Image
+# --------------------------------------------------
+def get_base64(file_path):
+    with open(file_path, "rb") as f:
+        data = f.read()
+    return base64.b64encode(data).decode()
+
+try:
+    bg_image = get_base64("background.jpg")
+
+    st.markdown(
+        f"""
+        <style>
+        [data-testid="stAppViewContainer"] {{
+            background-image: url("data:image/jpg;base64,{bg_image}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }}
+
+        [data-testid="stHeader"] {{
+            background: rgba(0,0,0,0);
+        }}
+
+        .title {{
+            text-align:center;
+            color:white;
+            font-size:42px;
+            font-weight:bold;
+        }}
+
+        .subtitle {{
+            text-align:center;
+            color:white;
+            font-size:18px;
+        }}
+
+        .block-container {{
+            background-color: rgba(255,255,255,0.88);
+            padding: 2rem;
+            border-radius: 15px;
+        }}
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+except:
+    pass
+
+# --------------------------------------------------
 # Load Model
 # --------------------------------------------------
 @st.cache_resource
@@ -23,8 +73,7 @@ def load_model():
 model = load_model()
 
 # --------------------------------------------------
-# Outlier Treatment for Exam Score
-# Replace these bounds with the values used in training
+# Outlier Handling
 # --------------------------------------------------
 def cap_exam_score(value):
     LOWER_BOUND = 20
@@ -32,111 +81,68 @@ def cap_exam_score(value):
     return max(LOWER_BOUND, min(value, UPPER_BOUND))
 
 # --------------------------------------------------
-# Custom CSS
-# --------------------------------------------------
-st.markdown("""
-<style>
-.main-title {
-    text-align: center;
-    color: #1E88E5;
-    font-size: 42px;
-    font-weight: bold;
-}
-.sub-title {
-    text-align: center;
-    color: #666666;
-    font-size: 18px;
-    margin-bottom: 20px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# --------------------------------------------------
 # Header
 # --------------------------------------------------
 st.markdown(
-    '<div class="main-title">🎓 Student Placement Prediction</div>',
+    '<div class="title">🎓 Student Placement Prediction</div>',
     unsafe_allow_html=True
 )
 
 st.markdown(
-    '<div class="sub-title">Predict whether a student will be placed based on academic performance.</div>',
+    '<div class="subtitle">Predict student placement using Machine Learning</div>',
     unsafe_allow_html=True
 )
 
-st.divider()
+st.markdown("---")
 
 # --------------------------------------------------
-# Input Sliders
+# Inputs
 # --------------------------------------------------
 study_hours = st.slider(
     "📚 Study Hours",
-    min_value=0.0,
-    max_value=12.0,
-    value=5.0,
-    step=0.5
+    0.0, 12.0, 5.0, 0.5
 )
 
 attendance = st.slider(
     "🏫 Attendance (%)",
-    min_value=0.0,
-    max_value=100.0,
-    value=75.0,
-    step=1.0
+    0.0, 100.0, 75.0, 1.0
 )
 
 sleep_hours = st.slider(
     "😴 Sleep Hours",
-    min_value=0.0,
-    max_value=12.0,
-    value=7.0,
-    step=0.5
+    0.0, 12.0, 7.0, 0.5
 )
 
 internet_usage = st.slider(
     "🌐 Internet Usage (Hours)",
-    min_value=0.0,
-    max_value=12.0,
-    value=3.0,
-    step=0.5
+    0.0, 12.0, 3.0, 0.5
 )
 
 assignments_completed = st.slider(
     "📝 Assignments Completed",
-    min_value=0,
-    max_value=20,
-    value=10,
-    step=1
+    0, 20, 10
 )
 
 previous_score = st.slider(
     "📊 Previous Score",
-    min_value=0.0,
-    max_value=100.0,
-    value=70.0,
-    step=1.0
+    0.0, 100.0, 70.0, 1.0
 )
 
 exam_score = st.slider(
     "🧾 Exam Score",
-    min_value=0.0,
-    max_value=100.0,
-    value=75.0,
-    step=1.0
+    0.0, 100.0, 75.0, 1.0
 )
 
-st.divider()
+st.markdown("---")
 
 # --------------------------------------------------
-# Prediction
+# Prediction Button
 # --------------------------------------------------
 if st.button("🚀 Predict Placement", use_container_width=True):
 
-    # Apply outlier treatment
     exam_score = cap_exam_score(exam_score)
 
-    # Create DataFrame
-    input_data = pd.DataFrame({
+    input_df = pd.DataFrame({
         "study_hours": [study_hours],
         "attendance": [attendance],
         "sleep_hours": [sleep_hours],
@@ -146,19 +152,15 @@ if st.button("🚀 Predict Placement", use_container_width=True):
         "exam_score": [exam_score]
     })
 
-    # Prediction
-    prediction = model.predict(input_data)
+    prediction = model.predict(input_df)
     prediction = prediction[0]
 
-    st.divider()
-
-    # Result
-    if prediction == "Placed":
-        st.success("🎉 Congratulations! The student is likely to be PLACED.")
+    if str(prediction).strip().lower() == "placed":
+        st.success("🎉 Prediction: Student is likely to be PLACED")
         st.balloons()
 
-    elif prediction == "Not Placed":
-        st.error("📌 Prediction: The student is likely to be NOT PLACED.")
+    elif str(prediction).strip().lower() == "not placed":
+        st.error("❌ Prediction: Student is likely to be NOT PLACED")
 
     else:
-        st.info(f"Prediction Result: {prediction}")
+        st.info(f"Prediction: {prediction}")
