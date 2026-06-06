@@ -2,31 +2,64 @@
 
 import streamlit as st
 import pandas as pd
-import pickle
+from catboost import CatBoostClassifier
 
-# Load CatBoost model
-with open("catboost_model.pkl", "rb") as file:
-    model = pickle.load(file)
+# -----------------------------
+# Load CatBoost Model
+# -----------------------------
+@st.cache_resource
+def load_model():
+    model = CatBoostClassifier()
+    model.load_model("catboost_model.cbm")
+    return model
 
-st.title("CatBoost Classification Prediction App")
+model = load_model()
 
-st.write("Enter input values below:")
+# -----------------------------
+# Outlier Capping Function
+# -----------------------------
+def cap_exam_score(value):
+    EXAM_SCORE_LOWER = 20   # replace with your training lower bound
+    EXAM_SCORE_UPPER = 100  # replace with your training upper bound
 
-# Example input fields
-# Change these according to your dataset columns
-feature1 = st.number_input("Feature 1")
-feature2 = st.number_input("Feature 2")
-feature3 = st.number_input("Feature 3")
-feature4 = st.number_input("Feature 4")
+    if value < EXAM_SCORE_LOWER:
+        return EXAM_SCORE_LOWER
+    elif value > EXAM_SCORE_UPPER:
+        return EXAM_SCORE_UPPER
+    else:
+        return value
+
+# -----------------------------
+# Streamlit App
+# -----------------------------
+st.title("Student Placement Prediction")
+st.write("Enter student details below:")
+
+study_hours = st.number_input("Study Hours", min_value=0.0)
+attendance = st.number_input("Attendance (%)", min_value=0.0, max_value=100.0)
+sleep_hours = st.number_input("Sleep Hours", min_value=0.0)
+internet_usage = st.number_input("Internet Usage Hours", min_value=0.0)
+assignments_completed = st.number_input("Assignments Completed", min_value=0)
+previous_score = st.number_input("Previous Score", min_value=0.0)
+exam_score = st.number_input("Exam Score", min_value=0.0)
 
 if st.button("Predict"):
+
+    exam_score = cap_exam_score(exam_score)
+
     input_data = pd.DataFrame({
-        "feature1": [feature1],
-        "feature2": [feature2],
-        "feature3": [feature3],
-        "feature4": [feature4]
+        "study_hours": [study_hours],
+        "attendance": [attendance],
+        "sleep_hours": [sleep_hours],
+        "internet_usage": [internet_usage],
+        "assignments_completed": [assignments_completed],
+        "previous_score": [previous_score],
+        "exam_score": [exam_score]
     })
 
     prediction = model.predict(input_data)
 
-    st.success(f"Predicted Class: {prediction[0]}")
+    if int(prediction[0]) == 1:
+        st.success("Prediction: Placed")
+    else:
+        st.error("Prediction: Not Placed")
