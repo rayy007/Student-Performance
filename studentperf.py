@@ -1,53 +1,45 @@
-# app.py
-
 import streamlit as st
 import pandas as pd
-from catboost import CatBoostClassifier
+import joblib
 
-# -----------------------------
-# Load CatBoost Model
-# -----------------------------
+# Load trained model
 @st.cache_resource
 def load_model():
-    model = CatBoostClassifier()
-    model.load_model("catboost_model.cbm")
-    return model
+    return joblib.load("catboost_model.pkl")
 
 model = load_model()
 
-# -----------------------------
-# Outlier Capping Function
-# -----------------------------
+# Outlier treatment for exam_score
 def cap_exam_score(value):
-    EXAM_SCORE_LOWER = 20   # replace with your training lower bound
-    EXAM_SCORE_UPPER = 100  # replace with your training upper bound
+    LOWER_BOUND = 20    # Replace with your actual lower bound
+    UPPER_BOUND = 100   # Replace with your actual upper bound
 
-    if value < EXAM_SCORE_LOWER:
-        return EXAM_SCORE_LOWER
-    elif value > EXAM_SCORE_UPPER:
-        return EXAM_SCORE_UPPER
-    else:
-        return value
+    if value < LOWER_BOUND:
+        return LOWER_BOUND
+    elif value > UPPER_BOUND:
+        return UPPER_BOUND
+    return value
 
-# -----------------------------
-# Streamlit App
-# -----------------------------
+# Title
 st.title("Student Placement Prediction")
-st.write("Enter student details below:")
 
+st.write("Enter Student Details")
+
+# Inputs
 study_hours = st.number_input("Study Hours", min_value=0.0)
 attendance = st.number_input("Attendance (%)", min_value=0.0, max_value=100.0)
 sleep_hours = st.number_input("Sleep Hours", min_value=0.0)
-internet_usage = st.number_input("Internet Usage Hours", min_value=0.0)
+internet_usage = st.number_input("Internet Usage", min_value=0.0)
 assignments_completed = st.number_input("Assignments Completed", min_value=0)
 previous_score = st.number_input("Previous Score", min_value=0.0)
 exam_score = st.number_input("Exam Score", min_value=0.0)
 
+# Prediction
 if st.button("Predict"):
 
     exam_score = cap_exam_score(exam_score)
 
-    input_data = pd.DataFrame({
+    input_df = pd.DataFrame({
         "study_hours": [study_hours],
         "attendance": [attendance],
         "sleep_hours": [sleep_hours],
@@ -57,9 +49,9 @@ if st.button("Predict"):
         "exam_score": [exam_score]
     })
 
-    prediction = model.predict(input_data)
+    prediction = model.predict(input_df)
 
-    if int(prediction[0]) == 1:
-        st.success("Prediction: Placed")
+    if prediction[0] == 1:
+        st.success("✅ Prediction: Placed")
     else:
-        st.error("Prediction: Not Placed")
+        st.error("❌ Prediction: Not Placed")
